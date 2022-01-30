@@ -1,11 +1,11 @@
 # Visualisierung von Coronadaten
 
-##Gruppe
+## Gruppe
 Korbinian Meier
 Leonard Ganz
 Pierre Franke
 
-##Beschreibung
+## Beschreibung
 In diesem Projekt sollen Daten zur andauernden Pandemie visualisiert werden. Auf einer
 Deutschlandkarte werden Regionen in verschiedenen Hierarchiestufen (Bundesländer, Landkreise)
 dargestellt. Für diese werden Inzidenzwerte z.B. durch Einfärbung im Heatmap-Stil
