@@ -1,5 +1,4 @@
-# Visualisierung von Coronadaten
-
+# PanVis - Pandemie Visualisierung
 ## Gruppe
 Korbinian Meier
 Leonard Ganz
@@ -24,3 +23,15 @@ die Datenstruktur soll mit **funktionalen Referenzen / Linsen** gearbeitet werde
 der Datenvisualisierung in einer grafischen Benutzeroberfläche deckt das Thema
 **Anwendungsprogrammierung** ab. Dieser Bereich wird durch die eingangs genannte
 **Web**komponente ergänzt.
+
+## Setup
+
+install hpack with "stack install hpack"
+
+use "hpack" to update panvis.cabal based on changes in package.yaml (executed automatically by stack build)
+
+if missing depepndencies: "stack install"
+
+build with "stack build"
+
+run with "stack exec panvis-exe"
