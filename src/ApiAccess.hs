@@ -85,5 +85,5 @@ apiIncidenceHistoryByDistrictRequest ags days = apiDistrictsPrefix <> textToBS a
 apiDistrictsRequest :: Request
 apiDistrictsRequest = buildRequest "GET" apiHost apiDistrictsPrefix []
 
-getDistrictsList :: IO (Maybe (JSONHashList ApiDistrict))
+getDistrictsList :: IO (Maybe [ApiDistrict])
 getDistrictsList = parseDistrictList <$> (getResponseBody <$> httpLBS apiDistrictsRequest)

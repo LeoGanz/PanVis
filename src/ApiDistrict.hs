@@ -30,10 +30,13 @@ data ApiDistrict = ApiDistrict
   }
   deriving (Generic, FromJSON, ToJSON, Show)
 
-parseDistrictList :: L.ByteString -> Maybe (JSONHashList ApiDistrict)
+parseDistrictList :: L.ByteString -> Maybe [ApiDistrict]
 parseDistrictList input = do
   obj <- decode input :: Maybe Value
-  parseDistrictList' obj
+  let maybeHashList = parseDistrictList' obj
+  case maybeHashList of 
+    Nothing -> Nothing
+    (Just (HashList as)) -> Just as
 
 parseDistrictList' :: Value -> Maybe (JSONHashList ApiDistrict)
 parseDistrictList' = parseMaybe $
@@ -43,6 +46,7 @@ parseDistrictList' = parseMaybe $
 
 -- code below is adapted from https://williamyaoh.com/posts/2019-10-19-a-cheatsheet-to-json-handling.html
 
+-- list instance for FromJSON already exists
 newtype JSONHashList a = HashList [a]
   deriving (Show)
 
@@ -51,4 +55,4 @@ instance FromJSON a => FromJSON (JSONHashList a) where
     let kvs = HM.toList obj
         values = map snd kvs
         parsed = mapM parseJSON values
-     in fmap HashList parsed
+     in HashList <$> parsed
