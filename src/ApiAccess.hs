@@ -4,9 +4,39 @@ module ApiAccess where
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as L
+import ApiDistrict
 import Network.HTTP.Simple
+import Util
 
--- ArcGis apis
+-- General api access methods
+
+buildQueryParams :: [(BC.ByteString, BC.ByteString)] -> BC.ByteString
+buildQueryParams [] = ""
+buildQueryParams params = foldl (\acc (key, val) -> acc <> key <> "=" <> val <> "&") "?" params
+
+buildRequest :: BC.ByteString -> BC.ByteString -> BC.ByteString -> [(BC.ByteString, BC.ByteString)] -> Request
+buildRequest method host path params =
+  let queryParams = buildQueryParams params
+   in setRequestMethod method $
+        setRequestHost host $
+          setRequestPath (path <> queryParams) $
+            setRequestPort 443 $
+              setRequestSecure
+                True
+                defaultRequest
+
+saveQueryResult :: Request -> String -> IO ()
+saveQueryResult request filename = do
+  res <- httpLBS request
+  let status = getResponseStatusCode res
+  if status == 200
+    then do
+      print $ "saving response body to " ++ filename
+      let body = getResponseBody res
+      L.writeFile filename body
+    else print $ "request with status code" ++ show status
+
+-- ArcGis apis - not used anymore
 arcgisHost :: BC.ByteString
 arcgisHost = "services7.arcgis.com"
 
@@ -38,29 +68,22 @@ arcgisHistoryRequest = buildRequest "GET" arcgisHost (arcgisServicePathPrefix <>
 arcgisStatusRequest :: Request
 arcgisStatusRequest = buildRequest "GET" arcgisHost (arcgisServicePathPrefix <> arcgisStatusEndpoint <> arcgisQueryPrefix) arcgisDefaultParams
 
--- General api access methods
+-- using  https://api.corona-zahlen.org -- by Marlon Lückert
 
-buildQueryParams :: [(BC.ByteString, BC.ByteString)] -> BC.ByteString
-buildQueryParams = foldl (\acc (key, val) -> acc <> key <> "=" <> val <> "&") "?"
+apiHost :: BC.ByteString
+apiHost = "api.corona-zahlen.org"
 
-buildRequest :: BC.ByteString -> BC.ByteString -> BC.ByteString -> [(BC.ByteString, BC.ByteString)] -> Request
-buildRequest method host path params =
-  let queryParams = buildQueryParams params
-   in setRequestMethod method $
-        setRequestHost host $
-          setRequestPath (path <> queryParams) $
-            setRequestPort 443 $
-              setRequestSecure
-                True
-                defaultRequest
+apiDistrictsPrefix :: BC.ByteString
+apiDistrictsPrefix = "/districts/"
 
-saveQueryResult :: Request -> String -> IO ()
-saveQueryResult request filename = do
-  res <- httpLBS request
-  let status = getResponseStatusCode res
-  if status == 200
-    then do
-      print $ "saving response body to " ++ filename
-      let body = getResponseBody res
-      L.writeFile filename body
-    else print $ "request with status code" ++ show status
+apiHistoryIncidence :: BC.ByteString
+apiHistoryIncidence = "/history/incidence"
+
+apiIncidenceHistoryByDistrictRequest :: DistrictKey -> Int -> BC.ByteString
+apiIncidenceHistoryByDistrictRequest ags days = apiDistrictsPrefix <> textToBS ags <> apiHistoryIncidence <> intToBS days
+
+apiDistrictsRequest :: Request
+apiDistrictsRequest = buildRequest "GET" apiHost apiDistrictsPrefix []
+
+getDistrictsList :: IO (Maybe (JSONHashList ApiDistrict))
+getDistrictsList = parseDistrictList <$> (getResponseBody <$> httpLBS apiDistrictsRequest)
