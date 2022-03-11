@@ -4,10 +4,10 @@
 
 module ApiDistrict where
 
+import AesonUtil
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import qualified Data.ByteString.Lazy as L
-import qualified Data.HashMap.Strict as HM
 import Data.Text (Text)
 import GHC.Generics
 
@@ -34,7 +34,7 @@ parseDistrictList :: L.ByteString -> Maybe [ApiDistrict]
 parseDistrictList input = do
   obj <- decode input :: Maybe Value
   let maybeHashList = parseDistrictList' obj
-  case maybeHashList of 
+  case maybeHashList of
     Nothing -> Nothing
     (Just (HashList as)) -> Just as
 
@@ -43,16 +43,3 @@ parseDistrictList' = parseMaybe $
   withObject "<fields>" $ \obj -> do
     dataF <- obj .: "data"
     parseJSON dataF
-
--- code below is adapted from https://williamyaoh.com/posts/2019-10-19-a-cheatsheet-to-json-handling.html
-
--- list instance for FromJSON already exists
-newtype JSONHashList a = HashList [a]
-  deriving (Show)
-
-instance FromJSON a => FromJSON (JSONHashList a) where
-  parseJSON = withObject "JSONHashList" $ \obj ->
-    let kvs = HM.toList obj
-        values = map snd kvs
-        parsed = mapM parseJSON values
-     in HashList <$> parsed

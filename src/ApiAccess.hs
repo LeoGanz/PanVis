@@ -2,9 +2,8 @@
 
 module ApiAccess where
 
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.ByteString.Lazy as L
 import ApiDistrict
+import qualified Data.ByteString.Char8 as BC
 import Network.HTTP.Simple
 import Util
 
@@ -24,17 +23,6 @@ buildRequest method host path params =
               setRequestSecure
                 True
                 defaultRequest
-
-saveQueryResult :: Request -> String -> IO ()
-saveQueryResult request filename = do
-  res <- httpLBS request
-  let status = getResponseStatusCode res
-  if status == 200
-    then do
-      print $ "saving response body to " ++ filename
-      let body = getResponseBody res
-      L.writeFile filename body
-    else print $ "request with status code" ++ show status
 
 -- ArcGis apis - not used anymore
 arcgisHost :: BC.ByteString
@@ -77,13 +65,10 @@ apiDistrictsPrefix :: BC.ByteString
 apiDistrictsPrefix = "/districts/"
 
 apiHistoryIncidence :: BC.ByteString
-apiHistoryIncidence = "/history/incidence"
+apiHistoryIncidence = "/history/incidence/"
 
-apiIncidenceHistoryByDistrictRequest :: DistrictKey -> Int -> BC.ByteString
-apiIncidenceHistoryByDistrictRequest ags days = apiDistrictsPrefix <> textToBS ags <> apiHistoryIncidence <> intToBS days
+apiIncidenceHistoryByDistrictRequest :: Int -> DistrictKey -> Request
+apiIncidenceHistoryByDistrictRequest days ags = buildRequest "GET" apiHost (apiDistrictsPrefix <> textToBS ags <> apiHistoryIncidence <> intToBS days) []
 
 apiDistrictsRequest :: Request
 apiDistrictsRequest = buildRequest "GET" apiHost apiDistrictsPrefix []
-
-getDistrictsList :: IO (Maybe [ApiDistrict])
-getDistrictsList = parseDistrictList <$> (getResponseBody <$> httpLBS apiDistrictsRequest)

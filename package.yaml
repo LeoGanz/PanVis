@@ -27,6 +27,8 @@ dependencies:
 - aeson
 - text
 - unordered-containers
+- time
+- safe
 
 library:
   source-dirs: src

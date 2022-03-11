@@ -1,13 +1,18 @@
 module Util where
 
-import qualified Data.Binary as Bin
 import qualified Data.ByteString.Char8 as BC
-import Data.ByteString.Lazy.Char8 (toStrict)
-import Data.Text (Text)
+import qualified Data.ByteString.Lazy as L
+import Data.Text as T
 import Data.Text.Encoding as T
 
 textToBS :: Text -> BC.ByteString
 textToBS = T.encodeUtf8
 
-intToBS :: Bin.Binary a => a -> BC.ByteString
-intToBS i = toStrict $ Bin.encode i
+sToBS :: String -> BC.ByteString
+sToBS = textToBS . T.pack
+
+intToBS :: Int -> BC.ByteString
+intToBS = sToBS . show
+
+bsToL :: BC.ByteString -> L.ByteString
+bsToL = L.fromChunks . return
