@@ -2,14 +2,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module ApiHistoryData where
+module DataRetrieval.ApiHistoryData where
 
-import AesonUtil
-import ApiDistrict (DistrictKey)
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import qualified Data.ByteString.Lazy as L
 import Data.Time
+import DataRetrieval.AesonUtil
+import DataRetrieval.ApiDistrict (DistrictKey)
 import GHC.Generics (Generic)
 
 data HistoryFragment = HistoryFragment

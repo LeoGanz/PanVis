@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module ApiAccess where
+module DataRetrieval.ApiAccess where
 
-import ApiDistrict
 import qualified Data.ByteString.Char8 as BC
+import DataRetrieval.ApiDistrict
 import Network.HTTP.Simple
 import Util
 

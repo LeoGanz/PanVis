@@ -2,9 +2,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module ApiDistrict where
+module DataRetrieval.ApiDistrict where
 
-import AesonUtil
+import DataRetrieval.AesonUtil
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import qualified Data.ByteString.Lazy as L

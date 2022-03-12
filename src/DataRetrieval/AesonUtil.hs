@@ -1,4 +1,4 @@
-module AesonUtil where
+module DataRetrieval.AesonUtil where
 
 import Data.Aeson.Types
 import qualified Data.HashMap.Strict as HM

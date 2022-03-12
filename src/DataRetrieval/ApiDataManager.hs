@@ -1,10 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module ApiDataManager where
+module DataRetrieval.ApiDataManager where
 
-import ApiAccess
-import ApiDistrict
-import ApiHistoryData
 import Control.Monad (when)
 import qualified Data.ByteString.Lazy as L
 import Data.List (transpose)
@@ -13,6 +10,9 @@ import Data.Text (pack)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Time
+import DataRetrieval.ApiAccess
+import DataRetrieval.ApiDistrict (ApiDistrict, DistrictKey, ags, parseDistrictList)
+import DataRetrieval.ApiHistoryData
 import Debug.Trace (trace)
 import Network.HTTP.Simple
 import Safe (lastMay)
@@ -60,9 +60,9 @@ doUpdate agss lastUpdate = do
 
   histories <- sequence <$> mapM (fetchAndParse (fromInteger days)) agss
   --  mapM_ (mapM_ (print . date . head))  histories
-  let firstDates = sequence $ mapM (map (utctDay . ApiHistoryData.date . head)) histories
+  let firstDates = sequence $ mapM (map (utctDay . date . head)) histories
       firstDate = fromJust $ minimum <$> firstDates
-      lastDates = sequence $ mapM (map (utctDay . ApiHistoryData.date . last)) histories
+      lastDates = sequence $ mapM (map (utctDay . date . last)) histories
       lastDate = fromJust $ maximum <$> lastDates
       preprocessedHistories = sequence $ mapM (map (preprocess firstDate lastDate)) histories
   let incidencesPerDay = transpose <$> preprocessedHistories
@@ -79,7 +79,7 @@ preprocess firstReport lastReport fragments = worker fragments $ take (fromInteg
   where
     dayGenerator = map (flip addDays firstReport) [0 ..]
     dateGenerator = map (\day -> UTCTime {utctDay = day, utctDayTime = 0}) dayGenerator
-    fragBuilder aDate = HistoryFragment {date = aDate, ApiHistoryData.weekIncidence = 0}
+    fragBuilder aDate = HistoryFragment {date = aDate, weekIncidence = 0}
 
     worker :: [HistoryFragment] -> [UTCTime] -> [HistoryFragment]
     worker [] [] = []
@@ -92,10 +92,10 @@ preprocess firstReport lastReport fragments = worker fragments $ take (fromInteg
 
 writeDataPerDay :: Day -> [HistoryFragment] -> IO ()
 writeDataPerDay lastUpdate fragments = do
-  let theDay = ApiHistoryData.date $ head fragments
+  let theDay = date $ head fragments
       theDayString = pack $ formatTime defaultTimeLocale timeFormat theDay
       --          debugStr = \frag -> show (ApiHistoryData.weekIncidence frag) ++ "__" ++ formatTime defaultTimeLocale timeFormat (ApiHistoryData.date frag)
-      values = map (pack . show . ApiHistoryData.weekIncidence) fragments
+      values = map (pack . show . weekIncidence) fragments
   when
     (utctDay theDay > lastUpdate)
     (TIO.appendFile historyIncidenceFile $ T.append (T.intercalate ", " (theDayString : values)) "\n")
