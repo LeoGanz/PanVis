@@ -2,14 +2,18 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module DataRetrieval.ApiHistoryData where
+module DataRetrieval.ApiHistoryData
+  ( HistoryFragment (..),
+    parseDistrictHistory,
+  )
+where
 
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import qualified Data.ByteString.Lazy as L
 import Data.Time
 import DataRetrieval.AesonUtil
-import DataRetrieval.ApiDistrict (DistrictKey)
+import DataRetrieval.ApiDistrict (ApiDistrictKey)
 import GHC.Generics (Generic)
 
 data HistoryFragment = HistoryFragment
@@ -23,12 +27,12 @@ instance Ord HistoryFragment where
     EQ -> compare w1 w2
     cmp -> cmp
 
-parseDistrictHistory :: DistrictKey -> L.ByteString -> Maybe [HistoryFragment]
+parseDistrictHistory :: ApiDistrictKey -> L.ByteString -> Maybe [HistoryFragment]
 parseDistrictHistory ags input = do
   obj <- decode input
   parseDistrictHistory' ags obj
 
-parseDistrictHistory' :: DistrictKey -> Value -> Maybe [HistoryFragment]
+parseDistrictHistory' :: ApiDistrictKey -> Value -> Maybe [HistoryFragment]
 parseDistrictHistory' ags = parseMaybe $
   withObject "<fields>" $ \obj -> do
     history <- obj .: "data" .-> ags .-> "history"

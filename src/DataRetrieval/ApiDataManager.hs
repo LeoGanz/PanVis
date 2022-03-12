@@ -1,6 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module DataRetrieval.ApiDataManager where
+module DataRetrieval.ApiDataManager
+  ( getDistrictsList,
+    historyIncidenceFile,
+    updateHistoryIncidenceFile,
+    saveQueryResultLazy,
+  )
+where
 
 import Control.Monad (when)
 import qualified Data.ByteString.Lazy as L
@@ -11,7 +17,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Time
 import DataRetrieval.ApiAccess
-import DataRetrieval.ApiDistrict (ApiDistrict, DistrictKey, ags, parseDistrictList)
+import DataRetrieval.ApiDistrict (ApiDistrict, ApiDistrictKey, ags, parseDistrictList)
 import DataRetrieval.ApiHistoryData
 import Debug.Trace (trace)
 import Network.HTTP.Simple
@@ -51,7 +57,7 @@ updateHistoryIncidenceFile = do
               now <- utctDay <$> getCurrentTime
               when (addDays 1 lastUpdate < now) (doUpdate agss lastUpdate)
 
-doUpdate :: [DistrictKey] -> Day -> IO ()
+doUpdate :: [ApiDistrictKey] -> Day -> IO ()
 doUpdate agss lastUpdate = do
   --let agss = ["10042", "10043"] -- used for testing to have fewer api requests
   now <- utctDay <$> getCurrentTime
@@ -70,7 +76,7 @@ doUpdate agss lastUpdate = do
     Nothing -> print "Error: fetching or parsing of historical data failed"
     Just incidences -> mapM_ (writeDataPerDay lastUpdate) incidences
 
-fetchAndParse :: Int -> DistrictKey -> IO (Maybe [HistoryFragment])
+fetchAndParse :: Int -> ApiDistrictKey -> IO (Maybe [HistoryFragment])
 fetchAndParse nrDays key = parseDistrictHistory key . getResponseBody <$> httpLBS (apiIncidenceHistoryByDistrictRequest nrDays key)
 
 -- reports dont start at the same time and may have gaps. pad with incidence 0 reports

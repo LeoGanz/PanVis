@@ -1,6 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module DataRetrieval.ApiAccess where
+module DataRetrieval.ApiAccess
+  ( buildRequest,
+    arcgisHost,
+    arcgisHistoryRequest,
+    arcgisStatusRequest,
+    arcgisQueryUrl,
+    apiHost,
+    apiIncidenceHistoryByDistrictRequest,
+    apiDistrictsRequest,
+  )
+where
 
 import qualified Data.ByteString.Char8 as BC
 import DataRetrieval.ApiDistrict
@@ -67,7 +77,7 @@ apiDistrictsPrefix = "/districts/"
 apiHistoryIncidence :: BC.ByteString
 apiHistoryIncidence = "/history/incidence/"
 
-apiIncidenceHistoryByDistrictRequest :: Int -> DistrictKey -> Request
+apiIncidenceHistoryByDistrictRequest :: Int -> ApiDistrictKey -> Request
 apiIncidenceHistoryByDistrictRequest days ags = buildRequest "GET" apiHost (apiDistrictsPrefix <> textToBS ags <> apiHistoryIncidence <> intToBS days) []
 
 apiDistrictsRequest :: Request

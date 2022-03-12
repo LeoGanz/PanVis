@@ -29,6 +29,7 @@ dependencies:
 - unordered-containers
 - time
 - safe
+- containers
 
 library:
   source-dirs: src

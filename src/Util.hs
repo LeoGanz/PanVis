@@ -16,3 +16,6 @@ intToBS = sToBS . show
 
 bsToL :: BC.ByteString -> L.ByteString
 bsToL = L.fromChunks . return
+
+(<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<<$>>) = fmap . fmap

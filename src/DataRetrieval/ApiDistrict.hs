@@ -2,7 +2,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module DataRetrieval.ApiDistrict where
+module DataRetrieval.ApiDistrict
+(
+ApiDistrict(..), parseDistrictList, ApiDistrictKey
+)
+where
 
 import DataRetrieval.AesonUtil
 import Data.Aeson
@@ -11,10 +15,10 @@ import qualified Data.ByteString.Lazy as L
 import Data.Text (Text)
 import GHC.Generics
 
-type DistrictKey = Text
+type ApiDistrictKey = Text
 
 data ApiDistrict = ApiDistrict
-  { ags :: DistrictKey,
+  { ags :: ApiDistrictKey,
     name :: Text,
     county :: Text,
     state :: Text,
