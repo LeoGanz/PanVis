@@ -30,6 +30,9 @@ dependencies:
 - time
 - safe
 - containers
+- template-haskell
+- parsec
+- parsec-numbers
 
 library:
   source-dirs: src
