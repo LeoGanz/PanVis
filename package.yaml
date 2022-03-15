@@ -33,6 +33,7 @@ dependencies:
 - template-haskell
 - parsec
 - parsec-numbers
+- syb
 
 library:
   source-dirs: src

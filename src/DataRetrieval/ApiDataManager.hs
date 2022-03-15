@@ -143,7 +143,7 @@ writeDataPerDay lastUpdate fragments = do
           ]
     )
 
--- old
+-- old, intended for arcgis api 
 saveQueryResultLazy :: Request -> FilePath -> IO ()
 saveQueryResultLazy request filename = do
   res <- httpLBS request

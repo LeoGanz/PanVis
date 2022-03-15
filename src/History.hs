@@ -18,7 +18,7 @@ import Data.Time.Calendar (Day, fromGregorian)
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Number
 
-data History = History Header Body
+data History = History Header Body | AntiHistory String
   deriving (Show, Typeable, Data)
 
 newtype Header = Header [DistrictInfo]
@@ -36,7 +36,7 @@ data Snapshot = Snapshot Day [Double]
 -- for how to use parsec http://book.realworldhaskell.org/read/using-parsec.html was used among other resources
 followArrow = string "=>"
 
-history = History <$> header <*> body
+history = (History <$> header <*> body) <|> antiHistory
 
 textCell = many (noneOf ",\\\n\r")
 
@@ -94,6 +94,20 @@ eol =
     <|> string "\n"
     <|> string "\r"
     <?> "end of line"
+
+-- code for anti quotes, small, large, idchar & ident adapted from guide https://www.schoolofhaskell.com/user/marcin/quasiquotation-101
+antiHistory = char '$' >> AntiHistory <$> ident
+
+small = lower <|> char '_'
+
+large = upper
+
+idchar = small <|> large <|> digit <|> char '\''
+
+ident = do
+  c <- small
+  cs <- many idchar
+  return (c : cs)
 
 parseHistoryPlain :: String -> Either ParseError History
 parseHistoryPlain = parse history "(unknown)" . removeBlanks
