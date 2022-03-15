@@ -34,6 +34,11 @@ dependencies:
 - parsec
 - parsec-numbers
 - syb
+- gtk3
+- transformers
+- lifted-base
+- mtl
+- vector
 
 library:
   source-dirs: src
