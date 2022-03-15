@@ -17,37 +17,67 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Time
 import DataRetrieval.ApiAccess
-import DataRetrieval.ApiDistrict (ApiDistrict, ApiDistrictKey, ags, parseDistrictList)
+import DataRetrieval.ApiDistrict (ApiDistrict, ApiDistrictKey, ags, name, parseDistrictList, population, stateAbbreviation)
 import DataRetrieval.ApiHistoryData
 import Debug.Trace (trace)
 import Network.HTTP.Simple
 import Safe (lastMay)
+import Util
 
 getDistrictsList :: IO (Maybe [ApiDistrict])
 getDistrictsList = parseDistrictList . getResponseBody <$> httpLBS apiDistrictsRequest
 
 historyIncidenceFile :: FilePath
-historyIncidenceFile = "historyIncidence.csv"
+historyIncidenceFile = "incidence.history"
 
 timeFormat :: String
 timeFormat = "%Y-%m-%d"
 
+followArrow :: T.Text
+followArrow = " => "
+
 dayZero :: Day
 dayZero = ModifiedJulianDay {toModifiedJulianDay = 0}
 
+lenTimeString :: String -> Int
+lenTimeString format = length $ formatTime defaultTimeLocale format dayZero
+
 updateHistoryIncidenceFile :: IO ()
 updateHistoryIncidenceFile = do
-  distsM <- getDistrictsList
-  case distsM of
+  distsMay <- getDistrictsList
+  case distsMay of
     Nothing -> print "Error: Could not load districts data from Api"
     Just dists -> do
       let agss = map ags dists
+          names = map name dists
+          states = map stateAbbreviation dists
+          populations = map population dists
       TIO.appendFile historyIncidenceFile ""
       contents <- readFile historyIncidenceFile
       let lastLine = lastMay $ lines contents
       case lastLine of
         Nothing -> do
-          TIO.writeFile historyIncidenceFile $ T.append (T.intercalate ", " ("date" : agss)) "\n" -- header line of csv
+          TIO.writeFile historyIncidenceFile $ -- header line
+            T.concat
+              [ --T.pack $ replicate (lenTimeString timeFormat + length dayValueSeparator) ' ',
+                "ags",
+                followArrow,
+                T.intercalate ", " agss,
+                "\n",
+                "name",
+                followArrow,
+                T.intercalate ", " names,
+                "\n",
+                "stateAbbreviation",
+                followArrow,
+                T.intercalate ", " states,
+                "\n",
+                "population",
+                followArrow,
+                T.intercalate ", " (map intToText populations),
+                "\n",
+                "\n" -- empty line
+              ]
           doUpdate agss dayZero -- fetch data from the beginning
         Just l -> do
           let lastUpdateMay = parseTimeM True defaultTimeLocale timeFormat (takeWhile (/= ',') l) :: Maybe Day
@@ -99,12 +129,19 @@ preprocess firstReport lastReport fragments = worker fragments $ take (fromInteg
 writeDataPerDay :: Day -> [HistoryFragment] -> IO ()
 writeDataPerDay lastUpdate fragments = do
   let theDay = date $ head fragments
-      theDayString = pack $ formatTime defaultTimeLocale timeFormat theDay
+      theDayText = pack $ formatTime defaultTimeLocale timeFormat theDay
       --          debugStr = \frag -> show (ApiHistoryData.weekIncidence frag) ++ "__" ++ formatTime defaultTimeLocale timeFormat (ApiHistoryData.date frag)
       values = map (pack . show . weekIncidence) fragments
   when
     (utctDay theDay > lastUpdate)
-    (TIO.appendFile historyIncidenceFile $ T.append (T.intercalate ", " (theDayString : values)) "\n")
+    ( TIO.appendFile historyIncidenceFile $
+        T.concat
+          [ theDayText,
+            followArrow,
+            T.intercalate ", " values,
+            "\n"
+          ]
+    )
 
 -- old
 saveQueryResultLazy :: Request -> FilePath -> IO ()

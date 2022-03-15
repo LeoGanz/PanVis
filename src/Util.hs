@@ -14,6 +14,9 @@ sToBS = textToBS . T.pack
 intToBS :: Int -> BC.ByteString
 intToBS = sToBS . show
 
+intToText :: Int -> Text
+intToText = T.pack . show
+
 bsToL :: BC.ByteString -> L.ByteString
 bsToL = L.fromChunks . return
 

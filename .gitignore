@@ -6,4 +6,5 @@
 /.idea
 /out
 *.csv
+*.history
 .DS_Store

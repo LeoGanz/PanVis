@@ -2,8 +2,10 @@
 
 module History
   ( History (..),
-    HistoryHeader (..),
-    HistoryRow (..),
+    Header (..),
+    Body (..),
+    DistrictInfo (..),
+    Snapshot (..),
     parseHistory,
     parseHistoryPlain,
     removeBlanks,
@@ -16,28 +18,49 @@ import Data.Time.Calendar (Day, fromGregorian)
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Number
 
-data History = History HistoryHeader [HistoryRow]
+data History = History Header Body
   deriving (Show, Typeable, Data)
 
-newtype HistoryHeader = HistoryHeader [String]
+newtype Header = Header [DistrictInfo]
   deriving (Show, Typeable, Data)
 
-data HistoryRow = HistoryRow Day [Double]
+newtype Body = Body [Snapshot]
+  deriving (Show, Typeable, Data)
+
+data DistrictInfo = DistrictInfo {ags :: String, name :: String, stateAbbreviation :: String, population :: Int}
+  deriving (Show, Typeable, Data)
+
+data Snapshot = Snapshot Day [Double]
   deriving (Show, Typeable, Data)
 
 -- for how to use parsec http://book.realworldhaskell.org/read/using-parsec.html was used among other resources
+followArrow = string "=>"
 
-historyP = History <$> header <*> endBy dataRow possiblyEscapedEol
+history = History <$> header <*> body
 
-header = HistoryHeader <$> sepBy headerCell (char ',') <* possiblyEscapedEol
+textCell = many (noneOf ",\\\n\r")
 
-headerCell = many (noneOf ",\\\\\n\r")
+header = do
+  -- with some effort one could make the order of these fields irrelevant
+  agss <- stringInfoFields "ags"
+  names <- stringInfoFields "name"
+  stateAbbreviations <- stringInfoFields "stateAbbreviation"
+  populations <- integerInfoFields "population"
+  let districts = map (\i -> DistrictInfo {ags = agss !! i, name = names !! i, stateAbbreviation = stateAbbreviations !! i, population = populations !! i}) [0 .. (length names - 1)]
+  possiblyEscapedEol -- blank line
+  return $ Header districts
+
+stringInfoFields infoType = string infoType *> followArrow *> sepBy textCell (char ',') <* possiblyEscapedEol
+
+integerInfoFields infoType = string infoType *> followArrow *> sepBy int (char ',') <* possiblyEscapedEol
+
+body = Body <$> endBy dataRow possiblyEscapedEol
 
 dataRow = do
   day <- date
-  string "=>"
+  followArrow
   values <- sepBy cell (char ',')
-  return $ HistoryRow day values
+  return $ Snapshot day values
 
 date :: CharParser st Day
 date = do
@@ -73,7 +96,7 @@ eol =
     <?> "end of line"
 
 parseHistoryPlain :: String -> Either ParseError History
-parseHistoryPlain = parse historyP "(unknown)" . removeBlanks
+parseHistoryPlain = parse history "(unknown)" . removeBlanks
 
 -- adapted from wiki QQ Expr example https://wiki.haskell.org/Quasiquotation
 parseHistory :: Monad m => (String, Int, Int) -> String -> m History
@@ -91,7 +114,7 @@ parseHistory (file, line, col) s =
             flip setSourceColumn col $
               pos
       spaces
-      e <- historyP
+      e <- history
       eof
       return e
 
