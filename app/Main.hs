@@ -43,38 +43,40 @@ main = do
     mainGUI
 
 
+-- abbreviations for readability
+takeMVarE var       = get >>= (\env -> liftIO $ takeMVar (var env))
+putMVarE  var val   = get >>= (\env -> liftIO $ putMVar  (var env) val)
+readMVarE var       = get >>= (\env -> liftIO $ readMVar (var env))
+swapMVarE var val   = get >>= (\env -> liftIO $ void $ swapMVar (var env) val)
+
+
 startStopAnimation :: StateT Env IO ()
 startStopAnimation = do
-    env <- get
-    paused <- liftIO $ takeMVar $ isPaused env
+    paused <- takeMVarE isPaused
 
     if paused then do
-        -- set paused state to false
-        liftIO $ void $ putMVar (isPaused env) False
+        putMVarE isPaused False
 
-        -- start animation and store its threadId
         threadId <- fork $ doAnimation True
-        liftIO $ void $ swapMVar (animThread env) $ Just threadId
+        swapMVarE animThread (Just threadId)
     
     else do
-        -- kill old animation thread
-        maybeThreadId <- liftIO $ takeMVar $ animThread env
+        maybeThreadId <- takeMVarE animThread
         forM_ maybeThreadId killThread
-        liftIO $ putMVar (animThread env) Nothing
+        putMVarE animThread Nothing
 
-        -- set paused state to true
-        liftIO $ void $ putMVar (isPaused env) True
+        putMVarE isPaused True
 
 
 -- TODO: get pixbuf from frames
 doAnimation :: Bool -> StateT Env IO () -- "Bool ->" just for demo
 doAnimation isGreen = do
-    env <- get
-    paused <- liftIO $ readMVar $ isPaused env
+    paused <- readMVarE isPaused
     unless paused $ do
-        id <- liftIO $ takeMVar $ animFrameId env
-        liftIO $ putMVar (animFrameId env) (id + 1)
+        id <- takeMVarE animFrameId
+        putMVarE animFrameId (id + 1)
 
+        env <- get
         let buffer = if isGreen then v2 env else ori env
         display id buffer
         
@@ -86,6 +88,7 @@ display :: Int -> Pixbuf -> StateT Env IO ()
 display n buffer = do
     env <- get
     let menu = mainMenu env
-    liftIO $ postGUIAsync $ imageSetFromPixbuf (map_image menu) buffer
-    liftIO $ postGUIAsync $ set (time_scale menu) [rangeValue := fromIntegral n]
+    liftIO $ postGUIAsync $ do
+        imageSetFromPixbuf (map_image menu) buffer
+        set (time_scale menu) [rangeValue := fromIntegral n]
     -- TODO: set time_label
