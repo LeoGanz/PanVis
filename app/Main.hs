@@ -12,9 +12,9 @@ import GUIData
 
 data Env = Env  {
                       mainMenu      :: MainMenu
-                    , animThread    :: MVar (Maybe ThreadId)
+                    , animThread    :: MVar ThreadId
                     , animFrameId   :: MVar Int
-                    , frames        :: MVar (Maybe (Vector Pixbuf))
+                    , frames        :: MVar (Vector Pixbuf)
                     , isPaused      :: MVar Bool
                     , ori           :: Pixbuf   -- just as example / for demonstration purposes
                     , v2            :: Pixbuf   -- 
@@ -31,9 +31,9 @@ main = do
     v2  <- pixbufNewFromFile "images/germany_counties_green.svg"
     
     -- global variables
-    animThread  <- newMVar Nothing
+    animThread  <- newEmptyMVar
     animFrameId <- newMVar 0
-    frames      <- newMVar Nothing
+    frames      <- newEmptyMVar
     isPaused    <- newMVar True
 
     let env = Env mainMenu animThread animFrameId frames isPaused ori v2
@@ -56,15 +56,10 @@ startStopAnimation = do
 
     if paused then do
         putMVarE isPaused False
-
-        threadId <- fork $ doAnimation True
-        swapMVarE animThread (Just threadId)
+        (fork $ doAnimation True) >>= putMVarE animThread
     
     else do
-        maybeThreadId <- takeMVarE animThread
-        forM_ maybeThreadId killThread
-        putMVarE animThread Nothing
-
+        takeMVarE animThread >>= killThread
         putMVarE isPaused True
 
 
