@@ -37,6 +37,8 @@ quoteHistoryExp s = do
 
 antiHistoryExp :: History -> Maybe TH.ExpQ
 antiHistoryExp (AntiHistory s) = Just [|toHistory $(TH.varE $ TH.mkName s)|]
+antiHistoryExp (ExtendedHistory h body) = Just [|appendBody (toHistory $(TH.varE $ TH.mkName h)) body|]
+antiHistoryExp (AntiExtendedHistory h s) = Just [|appendBody (toHistory $(TH.varE $ TH.mkName h)) (toBody $(TH.varE $ TH.mkName s))|]
 antiHistoryExp _ = Nothing
 
 class ToHistory a where
@@ -44,3 +46,12 @@ class ToHistory a where
 
 instance ToHistory String where
   toHistory = fromRight (History (Header []) (Body [])) . parseHistoryPlain
+
+instance ToHistory History where
+  toHistory = id
+
+class ToBody a where
+  toBody :: a -> Body
+
+instance ToBody String where
+  toBody = fromRight (Body []) . parseBodyPlain
