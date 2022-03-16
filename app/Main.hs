@@ -27,8 +27,8 @@ main = do
     rangeSetRange (time_scale mainMenu) (0::Double) (999::Double)
     widgetShowAll $ main_window mainMenu
 
-    ori <- pixbufNewFromFile "images/germany_counties.svg"
-    v2  <- pixbufNewFromFile "images/germany_counties_green.svg"
+    ori <- pixbufNewFromFile "app/images/germany_counties.svg"
+    v2  <- pixbufNewFromFile "app/images/germany_counties_green.svg"
     
     -- global variables
     animThread  <- newEmptyMVar
