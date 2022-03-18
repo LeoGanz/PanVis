@@ -28,12 +28,11 @@ instance Ord HistoryFragment where
     cmp -> cmp
 
 parseDistrictHistory :: ApiDistrictKey -> L.ByteString -> Maybe [HistoryFragment]
-parseDistrictHistory ags input = do
-  obj <- decode input
-  parseDistrictHistory' ags obj
+parseDistrictHistory ags input = decode input >>= parseDistrictHistory' ags 
 
 parseDistrictHistory' :: ApiDistrictKey -> Value -> Maybe [HistoryFragment]
 parseDistrictHistory' ags = parseMaybe $
   withObject "<fields>" $ \obj -> do
     history <- obj .: "data" .-> ags .-> "history"
     parseJSONList history
+

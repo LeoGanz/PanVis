@@ -5,6 +5,7 @@ module DataRetrieval.ApiDataManager
     historyIncidenceFile,
     updateHistoryIncidenceFile,
     saveQueryResultLazy,
+    updateFileSuffix,
   )
 where
 
@@ -19,6 +20,7 @@ import Data.Time
 import DataRetrieval.ApiAccess
 import DataRetrieval.ApiDistrict (ApiDistrict, ApiDistrictKey, ags, name, parseDistrictList, population, stateAbbreviation)
 import DataRetrieval.ApiHistoryData
+import DataRetrieval.HistoryUpdate (parseHistoryUpdate, processHistoryUpdates)
 import Debug.Trace (trace)
 import Network.HTTP.Simple
 import Safe (lastMay)
@@ -30,6 +32,12 @@ getDistrictsList = parseDistrictList . getResponseBody <$> httpLBS apiDistrictsR
 historyIncidenceFile :: FilePath
 historyIncidenceFile = "incidence.history"
 
+updateFileSuffix :: String
+updateFileSuffix = "-update"
+
+historyIncidenceUpdateFile :: FilePath
+historyIncidenceUpdateFile = historyIncidenceFile ++ updateFileSuffix
+
 timeFormat :: String
 timeFormat = "%Y-%m-%d"
 
@@ -38,9 +46,6 @@ followArrow = " => "
 
 dayZero :: Day
 dayZero = ModifiedJulianDay {toModifiedJulianDay = 0}
-
-lenTimeString :: String -> Int
-lenTimeString format = length $ formatTime defaultTimeLocale format dayZero
 
 updateHistoryIncidenceFile :: IO ()
 updateHistoryIncidenceFile = do
@@ -53,39 +58,64 @@ updateHistoryIncidenceFile = do
           states = map stateAbbreviation dists
           populations = map population dists
       TIO.appendFile historyIncidenceFile ""
+      TIO.appendFile historyIncidenceUpdateFile ""
       contents <- readFile historyIncidenceFile
-      let lastLine = lastMay $ lines contents
-      case lastLine of
-        Nothing -> do
-          TIO.writeFile historyIncidenceFile $ -- header line
-            T.concat
-              [ --T.pack $ replicate (lenTimeString timeFormat + length dayValueSeparator) ' ',
-                "ags",
-                followArrow,
-                T.intercalate ", " agss,
-                "\n",
-                "name",
-                followArrow,
-                T.intercalate ", " names,
-                "\n",
-                "stateAbbreviation",
-                followArrow,
-                T.intercalate ", " states,
-                "\n",
-                "population",
-                followArrow,
-                T.intercalate ", " (map intToText populations),
-                "\n",
-                "\n" -- empty line
-              ]
-          doUpdate agss dayZero -- fetch data from the beginning
-        Just l -> do
-          let lastUpdateMay = parseTimeM True defaultTimeLocale timeFormat (takeWhile (/= ',') l) :: Maybe Day
-          case lastUpdateMay of
-            Nothing -> doUpdate agss dayZero -- fetch data from the beginning
-            Just lastUpdate -> do
-              now <- utctDay <$> getCurrentTime
-              when (addDays 1 lastUpdate < now) (doUpdate agss lastUpdate)
+      contentsUpdate <- readFile (historyIncidenceFile ++ updateFileSuffix)
+      when
+        (null (lines contents))
+        ( TIO.writeFile
+            historyIncidenceFile
+            ( -- header line
+              T.concat
+                [ --T.pack $ replicate (lenTimeString timeFormat + length dayValueSeparator) ' ',
+                  "ags",
+                  followArrow,
+                  T.intercalate ", " agss,
+                  "\n",
+                  "name",
+                  followArrow,
+                  T.intercalate ", " names,
+                  "\n",
+                  "stateAbbreviation",
+                  followArrow,
+                  T.intercalate ", " states,
+                  "\n",
+                  "population",
+                  followArrow,
+                  T.intercalate ", " (map intToText populations),
+                  "\n",
+                  "\n" -- empty line
+                ]
+            )
+        )
+      let lastUpdate = determineLastUpdate [contents, contentsUpdate]
+      case trace ("Last updated: " ++ show lastUpdate ++ " fetching new data ...") lastUpdate of
+        Nothing -> doUpdate agss dayZero -- fetch data from the beginning
+        Just lastUpdate -> do
+          now <- utctDay <$> getCurrentTime
+          when
+            (addDays 1 lastUpdate < now)
+            ( if addDays (toInteger daysInOverviewRequest) lastUpdate > now
+                then doUpdatePartial lastUpdate
+                else doUpdate agss lastUpdate
+            )
+
+determineLastUpdate :: [String] -> Maybe Day
+determineLastUpdate = maximum . map (lastUpdate . lines)
+  where
+    lastUpdate contentLines = case lastMay contentLines of
+      Nothing -> Nothing
+      Just "" -> lastUpdate $ init contentLines
+      Just s -> lastUpdateLine s
+    lastUpdateLine line = parseTimeM True defaultTimeLocale timeFormat $ takeWhile (not . flip elem (" =>," :: String)) line :: Maybe Day
+
+doUpdatePartial :: Day -> IO ()
+doUpdatePartial lastUpdate = do
+  histUpdates <- parseHistoryUpdate . getResponseBody <$> httpLBS apiHistoryIncidenceRequest
+  let updateRows = processHistoryUpdates <$> histUpdates
+  case updateRows of
+    Nothing -> print "Error: fetching or parsing of update data failed"
+    Just rows -> mapM_ (writeDataPerDay (historyIncidenceFile ++ updateFileSuffix) lastUpdate) rows
 
 doUpdate :: [ApiDistrictKey] -> Day -> IO ()
 doUpdate agss lastUpdate = do
@@ -104,7 +134,7 @@ doUpdate agss lastUpdate = do
   let incidencesPerDay = transpose <$> preprocessedHistories
   case incidencesPerDay of
     Nothing -> print "Error: fetching or parsing of historical data failed"
-    Just incidences -> mapM_ (writeDataPerDay lastUpdate) incidences
+    Just incidences -> mapM_ (writeDataPerDay historyIncidenceFile lastUpdate) incidences
 
 fetchAndParse :: Int -> ApiDistrictKey -> IO (Maybe [HistoryFragment])
 fetchAndParse nrDays key = parseDistrictHistory key . getResponseBody <$> httpLBS (apiIncidenceHistoryByDistrictRequest nrDays key)
@@ -126,15 +156,15 @@ preprocess firstReport lastReport fragments = worker fragments $ take (fromInteg
       | utctDay (date frag) > utctDay aDate = fragBuilder aDate : worker allFrags dates -- missing element
       | otherwise = worker frags dates -- duplicate element, drop one
 
-writeDataPerDay :: Day -> [HistoryFragment] -> IO ()
-writeDataPerDay lastUpdate fragments = do
+writeDataPerDay :: FilePath -> Day -> [HistoryFragment] -> IO ()
+writeDataPerDay file lastUpdate fragments = do
   let theDay = date $ head fragments
       theDayText = pack $ formatTime defaultTimeLocale timeFormat theDay
       --          debugStr = \frag -> show (ApiHistoryData.weekIncidence frag) ++ "__" ++ formatTime defaultTimeLocale timeFormat (ApiHistoryData.date frag)
       values = map (pack . show . weekIncidence) fragments
   when
     (utctDay theDay > lastUpdate)
-    ( TIO.appendFile historyIncidenceFile $
+    ( TIO.appendFile file $
         T.concat
           [ theDayText,
             followArrow,
@@ -143,7 +173,7 @@ writeDataPerDay lastUpdate fragments = do
           ]
     )
 
--- old, intended for arcgis api 
+-- old, intended for arcgis api
 saveQueryResultLazy :: Request -> FilePath -> IO ()
 saveQueryResultLazy request filename = do
   res <- httpLBS request

@@ -9,6 +9,8 @@ module DataRetrieval.ApiAccess
     apiHost,
     apiIncidenceHistoryByDistrictRequest,
     apiDistrictsRequest,
+    apiHistoryIncidenceRequest,
+    daysInOverviewRequest
   )
 where
 
@@ -68,17 +70,23 @@ arcgisStatusRequest = buildRequest "GET" arcgisHost (arcgisServicePathPrefix <> 
 
 -- using  https://api.corona-zahlen.org -- by Marlon Lückert
 
+daysInOverviewRequest :: Int
+daysInOverviewRequest = 40
+
 apiHost :: BC.ByteString
 apiHost = "api.corona-zahlen.org"
 
 apiDistrictsPrefix :: BC.ByteString
-apiDistrictsPrefix = "/districts/"
+apiDistrictsPrefix = "/districts"
 
 apiHistoryIncidence :: BC.ByteString
-apiHistoryIncidence = "/history/incidence/"
+apiHistoryIncidence = "/history/incidence"
+
+apiHistoryIncidenceRequest :: Request
+apiHistoryIncidenceRequest = buildRequest "GET" apiHost (apiDistrictsPrefix <> apiHistoryIncidence <> "/" <> intToBS daysInOverviewRequest) []
 
 apiIncidenceHistoryByDistrictRequest :: Int -> ApiDistrictKey -> Request
-apiIncidenceHistoryByDistrictRequest days ags = buildRequest "GET" apiHost (apiDistrictsPrefix <> textToBS ags <> apiHistoryIncidence <> intToBS days) []
+apiIncidenceHistoryByDistrictRequest days ags = buildRequest "GET" apiHost (apiDistrictsPrefix <> "/" <> textToBS ags <> apiHistoryIncidence <> "/" <> intToBS days) []
 
 apiDistrictsRequest :: Request
 apiDistrictsRequest = buildRequest "GET" apiHost apiDistrictsPrefix []

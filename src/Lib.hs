@@ -8,15 +8,16 @@ module Lib
     stringToHistory,
     countryFromDefaultFile,
     testQQ,
-    testExtQQ
+    testExtQQ,
   )
 where
 
+import Data.Time.Calendar (Day)
 import DataRetrieval.ApiDataManager
 import DataStructure
 import History
 import HistoryQuote
-import Data.Time.Calendar (Day)
+import Util
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
@@ -26,7 +27,11 @@ stringToHistory s = [history|$s|]
 
 --directHistoryFromFile = [history_f|incidence.history|] -- works only for small files
 historyFromFile :: FilePath -> IO History
-historyFromFile file = readFile file >>= \s -> return $ stringToHistory s
+historyFromFile file =
+  readFile file
+    >>= \histString ->
+      readFileOrElse (file ++ updateFileSuffix) ""
+        >>= \extensionString -> return $ appendHistoryWithRawBodyData (stringToHistory histString) extensionString
 
 historyFromDefaultFile :: IO History
 historyFromDefaultFile = historyFromFile "incidence.history"

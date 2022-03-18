@@ -12,6 +12,7 @@ module History
     parseHistoryPlain,
     removeBlanks,
     appendBody,
+    lastDay
   )
 where
 
@@ -48,6 +49,12 @@ instance Lift Day where
 appendBody :: History -> Body -> History
 appendBody (History h (Body b)) (Body b') = History h $ Body (b ++ b')
 appendBody _ _ = error "invalid call. appendBody only supports default histories"
+
+lastDay :: History -> Day
+lastDay (History _ (Body snaps)) = extractDay $ last snaps
+  where
+    extractDay (Snapshot day _) = day
+lastDay _ = error "invalid call. lastDay only supports default histories"
 
 -- for how to use parsec http://book.realworldhaskell.org/read/using-parsec.html was used among other resources
 followArrow = string "=>"
