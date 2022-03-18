@@ -6,12 +6,17 @@ module Lib
     fetchAndSaveData,
     appendHistoryWithRawBodyData,
     stringToHistory,
+    countryFromDefaultFile,
+    testQQ,
+    testExtQQ
   )
 where
 
 import DataRetrieval.ApiDataManager
+import DataStructure
 import History
 import HistoryQuote
+import Data.Time.Calendar (Day)
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
@@ -25,6 +30,9 @@ historyFromFile file = readFile file >>= \s -> return $ stringToHistory s
 
 historyFromDefaultFile :: IO History
 historyFromDefaultFile = historyFromFile "incidence.history"
+
+countryFromDefaultFile :: Day -> IO (Maybe (Day, Country))
+countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
 
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
