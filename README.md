@@ -32,6 +32,8 @@ use `hpack` to update panvis.cabal based on changes in package.yaml (executed au
 
 if missing dependencies: `stack install`
 
+Install of gtk3 is required (on MacOS: brew install gtk+3).
+
 **build with `stack build`**
 
 run with `stack exec panvis-exe`

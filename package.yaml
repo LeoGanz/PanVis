@@ -39,6 +39,9 @@ dependencies:
 - lifted-base
 - mtl
 - vector
+- colour
+- xml-conduit
+- xml-hamlet
 
 library:
   source-dirs: src
