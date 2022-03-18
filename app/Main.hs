@@ -56,7 +56,7 @@ startStopAnimation = do
 
     if paused then do
         putMVarE isPaused False
-        (fork $ doAnimation True) >>= putMVarE animThread
+        fork (doAnimation True) >>= putMVarE animThread
     
     else do
         takeMVarE animThread >>= killThread
