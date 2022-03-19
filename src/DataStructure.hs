@@ -14,7 +14,7 @@ import Data.Time.Calendar (Day)
 import DataRetrieval.ApiDataManager
 import DataRetrieval.ApiDistrict (ags, name, population)
 import History
-import Lens.Micro.Platform
+import Control.Lens
 import Util
 
 type DistrictKey = Text -- AGS (allgemeiner Gemeindeschlüssel), e.g. 09162 for Munich (text instead of ints because of leading zeros)

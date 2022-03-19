@@ -31,7 +31,7 @@ dependencies:
 - safe
 - containers
 - template-haskell
-- microlens-platform
+- lens
 - parsec
 - parsec-numbers
 - syb

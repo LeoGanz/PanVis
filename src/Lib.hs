@@ -10,17 +10,18 @@ module Lib
     testQQ,
     testExtQQ,
     firstDateOfPandemic,
-    dataInFrontendFormat
+    dataInFrontendFormat,
   )
 where
 
+import Control.Lens
+import qualified Data.ByteString.Char8 as BC
 import Data.Time.Calendar (Day)
 import DataRetrieval.ApiDataManager
 import DataStructure
 import History
 import HistoryQuote
 import Util
-import qualified Data.ByteString.Char8 as BC
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
@@ -37,7 +38,7 @@ historyFromFile file =
         >>= \extensionString -> return $ appendHistoryWithRawBodyData (stringToHistory histString) extensionString
 
 historyFromDefaultFile :: IO History
-historyFromDefaultFile = historyFromFile "incidence.history"
+historyFromDefaultFile = historyFromFile historyIncidenceFile
 
 countryFromDefaultFile :: Day -> IO (Maybe (Day, Country))
 countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
@@ -45,12 +46,22 @@ countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
 
-firstDateOfPandemic :: Day
-firstDateOfPandemic = undefined
+firstDateOfPandemic :: IO (Maybe Day)
+firstDateOfPandemic = readFileMay historyIncidenceFile >>= \content -> return $ (parseDateFromLine . head . dropHeader . lines) =<< content
 
+-- utility function for front end
 dataInFrontendFormat :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
-dataInFrontendFormat = undefined
-
+dataInFrontendFormat day = do
+  countryTupMay <- countryFromDefaultFile day
+  let countryMay = countryTupMay ^? _Just . _2
+  case countryMay of
+    Nothing -> return Nothing
+    Just country -> do
+      let districtsList = country ^. states ^.. traverse ^. traverse . districts ^.. traverse
+          nameList = over mapped textToBS $ districtsList ^.. traverse . districtName
+          incidenceList = districtsList ^.. traverse . weekIncidence
+          resultList = zip nameList incidenceList
+      return $ Just (formatGermanDate day, resultList)
 
 -- for testing:
 

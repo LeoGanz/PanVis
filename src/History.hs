@@ -12,7 +12,8 @@ module History
     parseHistoryPlain,
     removeBlanks,
     appendBody,
-    lastDay
+    lastDay,
+    dropHeader
   )
 where
 
@@ -55,6 +56,9 @@ lastDay (History _ (Body snaps)) = extractDay $ last snaps
   where
     extractDay (Snapshot day _) = day
 lastDay _ = error "invalid call. lastDay only supports default histories"
+
+dropHeader :: [String] -> [String]
+dropHeader = tail . dropWhile (/= "") -- header and body are separated by empty line
 
 -- for how to use parsec http://book.realworldhaskell.org/read/using-parsec.html was used among other resources
 followArrow = string "=>"

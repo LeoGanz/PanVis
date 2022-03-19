@@ -6,6 +6,7 @@ module DataRetrieval.ApiDataManager
     updateHistoryIncidenceFile,
     saveQueryResultLazy,
     updateFileSuffix,
+    parseDateFromLine
   )
 where
 
@@ -44,9 +45,6 @@ timeFormat = "%Y-%m-%d"
 followArrow :: T.Text
 followArrow = " => "
 
-dayZero :: Day
-dayZero = ModifiedJulianDay {toModifiedJulianDay = 0}
-
 updateHistoryIncidenceFile :: IO ()
 updateHistoryIncidenceFile = do
   distsMay <- getDistrictsList
@@ -67,8 +65,7 @@ updateHistoryIncidenceFile = do
             historyIncidenceFile
             ( -- header line
               T.concat
-                [ --T.pack $ replicate (lenTimeString timeFormat + length dayValueSeparator) ' ',
-                  "ags",
+                [ "ags",
                   followArrow,
                   T.intercalate ", " agss,
                   "\n",
@@ -106,8 +103,10 @@ determineLastUpdate = maximum . map (lastUpdate . lines)
     lastUpdate contentLines = case lastMay contentLines of
       Nothing -> Nothing
       Just "" -> lastUpdate $ init contentLines
-      Just s -> lastUpdateLine s
-    lastUpdateLine line = parseTimeM True defaultTimeLocale timeFormat $ takeWhile (not . flip elem (" =>," :: String)) line :: Maybe Day
+      Just s -> parseDateFromLine s
+
+parseDateFromLine :: String -> Maybe Day
+parseDateFromLine line = parseTimeM True defaultTimeLocale timeFormat $ takeWhile (not . flip elem (" =>," :: String)) line :: Maybe Day
 
 doUpdatePartial :: Day -> IO ()
 doUpdatePartial lastUpdate = do
