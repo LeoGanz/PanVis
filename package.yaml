@@ -2,9 +2,9 @@ name:                panvis
 version:             0.1.0.0
 github:              "meierk/visualisierung-von-coronadaten"
 license:             BSD3
-author:              "Korbinian Meier, Leonard Ganz, Pierre Franke"
+author:              "Leonard Ganz, Pierre Franke"
 maintainer:          "leonard.ganz@campus.lmu.de"
-copyright:           "2022 Korbinian Meier, Leonard Ganz, Pierre Franke"
+copyright:           "2022 Leonard Ganz, Pierre Franke"
 
 extra-source-files:
 - README.md
