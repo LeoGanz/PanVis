@@ -1,11 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module DistrictPaths where
+module GenerateSVG where
 
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as Map
 import qualified Text.XML as XML
-import System.IO.Temp
 
 import XMLTemplate
 
@@ -13,8 +12,6 @@ import XMLTemplate
 test = writeSVGFile exampleList "images/germany_counties_test.svg"
 
 
-exampleHead = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" x=\"0px\" y=\"0px\" width=\"506.3px\" height=\"600px\" viewBox=\"0 0 732.4 1023\">\n<title>panvis</title>\n<defs>\n <linearGradient x1=\"402\" y1=\"970\" x2=\"702\" y2=\"970\" gradientUnits=\"userSpaceOnUse\" id=\"lGr\">\n  <stop offset=\"0\" style=\"stop-color:#fff9f3\"/>\n  <stop offset=\"0.166\" style=\"stop-color:#feebe2\"/>\n  <stop offset=\"0.333\" style=\"stop-color:#fa9fb5\"/>\n  <stop offset=\"0.5\" style=\"stop-color:#dd3497\"/>\n  <stop offset=\"0.666\" style=\"stop-color:#ae017e\"/>\n  <stop offset=\"0.833\" style=\"stop-color:#7a0177\"/>\n  <stop offset=\"1\" style=\"stop-color:#000\"/>\n </linearGradient>\n</defs>\n<style type=\"text/css\">\ntext {font-family:monospace,Courier New,Liberation Mono;font-size:14px}\npath {stroke:#fff;stroke-width:0.3}\npath:hover {stroke-width:1.5}\n</style>\n<g id=\"legend\">\n <text x=\"611\" y=\"960\">1 / 100 000</text>\n <rect style=\"fill:url(#lGr);fill-opacity:1\" height=\"20\" width=\"300\" x=\"402\" y=\"970\"/>\n <path d=\"m402,990v6h2v-4h47.7v4h2v-4h47.6v4h2v-4H551v4h2v-4h47.6v4h2v-4h47.7v4h2v-4H700v4h2v-6z\" style=\"fill:#000000;stroke-width:0\"/>\n <text x=\"390\" y=\"1010\">>0</text>\n <text x=\"435.2\" y=\"1010\">4000</text>\n <text x=\"485\" y=\"1010\">6000</text>\n <text x=\"531\" y=\"1010\">10000</text>\n <text x=\"581\" y=\"1010\">15000</text>\n <text x=\"629\" y=\"1010\">22000</text>\n <text x=\"678.5\" y=\"1010\">≥30000</text>\n</g>\n"
-exampleTail = "</svg>"
 exampleList :: [(C.ByteString, Int)]
 exampleList = [
      ("LK Stadtverband Saarbrücken", 1)
