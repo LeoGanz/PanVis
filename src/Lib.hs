@@ -9,6 +9,8 @@ module Lib
     countryFromDefaultFile,
     testQQ,
     testExtQQ,
+    firstDateOfPandemic,
+    dataInFrontendFormat
   )
 where
 
@@ -18,6 +20,7 @@ import DataStructure
 import History
 import HistoryQuote
 import Util
+import qualified Data.ByteString.Char8 as BC
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
@@ -41,6 +44,13 @@ countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
 
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
+
+firstDateOfPandemic :: Day
+firstDateOfPandemic = undefined
+
+dataInFrontendFormat :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
+dataInFrontendFormat = undefined
+
 
 -- for testing:
 
