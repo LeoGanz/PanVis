@@ -13,6 +13,7 @@ import Data.List
 import Data.Text (pack)
 import Data.Text.Encoding
 
+-- TODO: fit legend values to colorGradient
 generateXMLCode :: [(C.ByteString, Int)] -> [(Int, String)] -> [Text.XML.Node]
 generateXMLCode districtValList colorGradient = [xml|
 
@@ -64,16 +65,18 @@ getColor n
 
 
 getPath :: C.ByteString -> C.ByteString
-getPath district = districtPathHM HM.! district
+getPath district = case districtPathHM HM.!? district of
+    Just val -> val
+    Nothing  -> C.pack . error $ "Could not find district \"" ++ (C.unpack district) ++ "\"."
 
-
+-- TODO: set proper values
 colorGradient :: [(Int, String)]
 colorGradient = [(0,    "fff9f3")
-                ,(25,  "feebe2")
-                ,(50,  "fa9fb5")
+                ,(25,   "feebe2")
+                ,(50,   "fa9fb5")
                 ,(100,  "dd3497")
-                ,(200, "ae017e")
-                ,(500, "7a0177")
+                ,(200,  "ae017e")
+                ,(500,  "7a0177")
                 ,(1000, "000000")]
 
 

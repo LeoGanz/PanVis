@@ -2,22 +2,28 @@ module Main where
 
 import Graphics.UI.Gtk hiding (get)
 import Control.Monad
+import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
 import Control.Monad.Trans (liftIO)
 import Control.Concurrent.Lifted (fork, threadDelay, killThread, ThreadId)
 import Control.Monad.Trans.State.Lazy
-import Data.Vector (Vector)
+import qualified Data.Vector as Vec
+import qualified Data.ByteString.Char8 as C
+import System.IO
+import System.Directory
+import Data.Functor ( (<&>) )
 
 import GUIData
+import GenerateSVG
+
+type Date = String
 
 data Env = Env  {
                       mainMenu      :: MainMenu
                     , animThread    :: MVar ThreadId
                     , animFrameId   :: MVar Int
-                    , frames        :: MVar (Vector Pixbuf)
-                    , isPaused      :: MVar Bool
-                    , ori           :: Pixbuf   -- just as example / for demonstration purposes
-                    , v2            :: Pixbuf   -- 
+                    , frames        :: MVar (Vec.Vector (Date, Pixbuf))
+                    , paused        :: MVar Bool
                 }
 
 main :: IO()
@@ -27,63 +33,108 @@ main = do
     rangeSetRange (time_scale mainMenu) (0::Double) (999::Double)
     widgetShowAll $ main_window mainMenu
 
-    ori <- pixbufNewFromFile "app/images/germany_counties.svg"
-    v2  <- pixbufNewFromFile "app/images/germany_counties_green.svg"
-    
     -- global variables
     animThread  <- newEmptyMVar
     animFrameId <- newMVar 0
-    frames      <- newEmptyMVar
-    isPaused    <- newMVar True
+    frames      <- newMVar Vec.empty
+    paused      <- newMVar True
 
-    let env = Env mainMenu animThread animFrameId frames isPaused ori v2
+    let env = Env mainMenu animThread animFrameId frames paused
+
+    void $ forkIO $ evalStateT (loadFrames 0) env
 
     on (play_button mainMenu) buttonActivated $ evalStateT startStopAnimation env
-    on (main_window mainMenu) objectDestroy mainQuit
+    on (time_scale mainMenu)  adjustBounds    $ \pos -> evalStateT (selectFrame pos) env
+    on (main_window mainMenu) objectDestroy     mainQuit
     mainGUI
 
 
 -- abbreviations for readability
-takeMVarE var       = get >>= (\env -> liftIO $ takeMVar (var env))
-putMVarE  var val   = get >>= (\env -> liftIO $ putMVar  (var env) val)
-readMVarE var       = get >>= (\env -> liftIO $ readMVar (var env))
-swapMVarE var val   = get >>= (\env -> liftIO $ void $ swapMVar (var env) val)
+getMenu = get <&> mainMenu
+takeMVarE var       = get >>= liftIO . takeMVar . var
+putMVarE  var val   = get >>= liftIO . (\env -> putMVar (var env) val)
+readMVarE var       = get >>= liftIO . readMVar . var
+swapMVarE var val   = get >>= liftIO . (\env -> swapMVar (var env) val)
+modifyMVarE var f   = do {val <- takeMVarE var; putMVarE var (f val)}
+
+
+getDistrictDataAdapter :: Int -> Maybe (Date, [(C.ByteString, Int)])
+getDistrictDataAdapter daysSinceOutbreak = -- TODO
+    if daysSinceOutbreak < 100 then
+        if even daysSinceOutbreak then
+            Just ("Datum", exampleList)
+        else
+            Just ("Datum2", map (\(d, x) -> (d, (1000::Int) - x)) exampleList)
+    else Nothing
+
+
+loadFrames :: Int -> StateT Env IO ()
+loadFrames day = forM_ (getDistrictDataAdapter day) (\x -> loadSVG x >> loadFrames (day + 1))
+
+loadSVG :: (Date, [(C.ByteString, Int)]) -> StateT Env IO ()
+loadSVG (date, districtValList) = do
+    (filePath, handle) <- liftIO $ openTempFile "app/images" date
+    liftIO $ hClose handle
+    liftIO $ writeSVGFile districtValList filePath
+    pixbuf <- liftIO $ pixbufNewFromFile filePath
+    liftIO $ removeFile filePath
+    void $ modifyMVarE frames (\v -> Vec.snoc v (date, pixbuf))
+    v <- readMVarE frames
+    menu <- getMenu
+    liftIO $ postGUIAsync $ rangeSetRange (time_scale menu) (0::Double) (fromIntegral (Vec.length v))
 
 
 startStopAnimation :: StateT Env IO ()
 startStopAnimation = do
-    paused <- takeMVarE isPaused
-
-    if paused then do
-        putMVarE isPaused False
-        fork (doAnimation True) >>= putMVarE animThread
-    
+    isPaused <- takeMVarE paused
+    if isPaused then do
+        putMVarE paused False
+        fork doAnimation >>= putMVarE animThread
     else do
         takeMVarE animThread >>= killThread
-        putMVarE isPaused True
+        putMVarE paused True
 
 
--- TODO: get pixbuf from frames
-doAnimation :: Bool -> StateT Env IO () -- "Bool ->" just for demo
-doAnimation isGreen = do
-    paused <- readMVarE isPaused
-    unless paused $ do
+doAnimation :: StateT Env IO ()
+doAnimation = do
+    isPaused <- takeMVarE paused
+    if not isPaused then do
+        v <- readMVarE frames
         id <- takeMVarE animFrameId
-        putMVarE animFrameId (id + 1)
+        if id < Vec.length v then do
+            putMVarE paused False
+            putMVarE animFrameId (id + 1)
+            let (date, pixbuf) = v Vec.! id
+            display id date pixbuf
+            threadDelay 10000
+            doAnimation
+        else do
+            putMVarE animFrameId 0
+            t <- takeMVarE animThread
+            putMVarE paused True
+            killThread t
+    else do
+        putMVarE paused True
 
-        env <- get
-        let buffer = if isGreen then v2 env else ori env
-        display id buffer
-        
-        threadDelay 10000
-        when (id < 999) $ doAnimation (not isGreen)
+
+selectFrame :: Double -> StateT Env IO ()
+selectFrame pos = do
+    isPaused <- takeMVarE paused
+    unless isPaused (takeMVarE animThread >>= killThread)
+    putMVarE paused True
+    menu <- getMenu
+    let id = round pos
+    v <- readMVarE frames
+    when (id >= 0 && id < Vec.length v) $ do
+        swapMVarE animFrameId id
+        let (date, pixbuf) = v Vec.! id
+        display id date pixbuf
 
 
-display :: Int -> Pixbuf -> StateT Env IO ()
-display n buffer = do
-    env <- get
-    let menu = mainMenu env
+display :: Int -> Date -> Pixbuf -> StateT Env IO ()
+display sliderPos date pixbuf = do
+    menu <- getMenu
     liftIO $ postGUIAsync $ do
-        imageSetFromPixbuf (map_image menu) buffer
-        set (time_scale menu) [rangeValue := fromIntegral n]
-    -- TODO: set time_label
+        imageSetFromPixbuf (map_image menu) pixbuf
+        set (time_scale menu) [rangeValue := fromIntegral sliderPos]
+        set (time_label menu) [labelLabel := date]
