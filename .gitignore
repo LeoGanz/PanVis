@@ -8,3 +8,4 @@
 *.csv
 *.history-update
 .DS_Store
+.vscode/tasks.json

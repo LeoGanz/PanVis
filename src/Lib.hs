@@ -22,6 +22,7 @@ import DataStructure
 import History
 import HistoryQuote
 import Util
+import qualified Data.ByteString.Char8 as BC
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
