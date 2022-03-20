@@ -32,10 +32,17 @@ stringToHistory s = [history|$s|]
 --directHistoryFromFile = [history_f|incidence.history|] -- works only for small files
 historyFromFile :: FilePath -> IO History
 historyFromFile file =
+  readFileMay (file ++ preloadFileSuffix) >>=
+  \preloadStringMay ->
   readFile file
     >>= \histString ->
       readFileOrElse (file ++ updateFileSuffix) ""
-        >>= \extensionString -> return $ appendHistoryWithRawBodyData (stringToHistory histString) extensionString
+        >>= \extensionString -> do
+          let withoutPreload@(History _ body) = appendHistoryWithRawBodyData (stringToHistory histString) extensionString
+          case preloadStringMay of
+            Nothing -> return withoutPreload
+            Just "" -> return withoutPreload
+            Just preloadString -> return $ appendBody (stringToHistory preloadString) body
 
 historyFromDefaultFile :: IO History
 historyFromDefaultFile = historyFromFile historyIncidenceFile

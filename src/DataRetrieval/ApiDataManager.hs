@@ -6,6 +6,7 @@ module DataRetrieval.ApiDataManager
     updateHistoryIncidenceFile,
     saveQueryResultLazy,
     updateFileSuffix,
+    preloadFileSuffix,
     parseDateFromLine
   )
 where
@@ -37,8 +38,14 @@ historyIncidenceFile = "incidence.history"
 updateFileSuffix :: String
 updateFileSuffix = "-update"
 
+preloadFileSuffix :: String
+preloadFileSuffix = "-preload"
+
 historyIncidenceUpdateFile :: FilePath
 historyIncidenceUpdateFile = historyIncidenceFile ++ updateFileSuffix
+
+historyIncidencePreloadFile :: FilePath
+historyIncidencePreloadFile = historyIncidenceFile ++ preloadFileSuffix
 
 timeFormat :: String
 timeFormat = "%Y-%m-%d"
@@ -57,9 +64,11 @@ updateHistoryIncidenceFile = do
           states = map stateAbbreviation dists
           populations = map population dists
       TIO.appendFile historyIncidenceFile ""
+      TIO.appendFile historyIncidencePreloadFile ""
       TIO.appendFile historyIncidenceUpdateFile ""
       contents <- readFile historyIncidenceFile
-      contentsUpdate <- readFile (historyIncidenceFile ++ updateFileSuffix)
+      contentsPreload <- readFile historyIncidencePreloadFile
+      contentsUpdate <- readFile historyIncidenceUpdateFile
       when
         (null (lines contents))
         ( Utf8.writeFile -- with TIO: problems with utf8 encoding of Umlaute in district names
@@ -86,7 +95,7 @@ updateHistoryIncidenceFile = do
                 ]
             )
         )
-      let lastUpdate = determineLastUpdate [contents, contentsUpdate]
+      let lastUpdate = determineLastUpdate [contentsPreload, contents, contentsUpdate]
       case trace ("Last updated: " ++ show lastUpdate ++ " fetching new data ...") lastUpdate of
         Nothing -> doUpdate agss dayZero -- fetch data from the beginning
         Just lastUpdate -> do

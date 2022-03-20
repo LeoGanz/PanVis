@@ -7,5 +7,6 @@
 /out
 *.csv
 *.history-update
+*.history
 .DS_Store
 .vscode/tasks.json
