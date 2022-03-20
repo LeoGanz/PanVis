@@ -1,16 +1,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Lib
-  ( historyFromFile,
-    historyFromDefaultFile,
+  ( combinedHistoryFromFile,
+    combinedHistoryFromDefaultFile,
+    historyFromFile,
     fetchAndSaveData,
     appendHistoryWithRawBodyData,
     stringToHistory,
-    countryFromDefaultFile,
     testQQ,
     testExtQQ,
     firstDateOfPandemic,
-    dataInFrontendFormat,
+    dataInFrontendFormatPreloaded,
+    dataInFrontendFormatUpdates
   )
 where
 
@@ -29,37 +30,47 @@ appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
 stringToHistory :: String -> History
 stringToHistory s = [history|$s|]
 
---directHistoryFromFile = [history_f|incidence.history|] -- works only for small files
 historyFromFile :: FilePath -> IO History
-historyFromFile file =
-  readFileMay (file ++ preloadFileSuffix) >>=
-  \preloadStringMay ->
-  readFile file
-    >>= \histString ->
-      readFileOrElse (file ++ updateFileSuffix) ""
-        >>= \extensionString -> do
-          let withoutPreload@(History _ body) = appendHistoryWithRawBodyData (stringToHistory histString) extensionString
-          case preloadStringMay of
-            Nothing -> return withoutPreload
-            Just "" -> return withoutPreload
-            Just preloadString -> return $ appendBody (stringToHistory preloadString) body
+historyFromFile file = readFile file >>= \content -> return $ stringToHistory content
 
-historyFromDefaultFile :: IO History
-historyFromDefaultFile = historyFromFile historyIncidenceFile
+--directHistoryFromFile = [history_f|incidence.history|] -- works only for small files
+combinedHistoryFromFile :: FilePath -> IO History
+combinedHistoryFromFile file =
+  readFileMay (file ++ preloadFileSuffix)
+    >>= \preloadStringMay ->
+      readFile file
+        >>= \histString ->
+          readFileOrElse (file ++ updateFileSuffix) ""
+            >>= \extensionString -> do
+              let withoutPreload@(History _ body) = appendHistoryWithRawBodyData (stringToHistory histString) extensionString
+              case preloadStringMay of
+                Nothing -> return withoutPreload
+                Just "" -> return withoutPreload
+                Just preloadString -> return $ appendBody (stringToHistory preloadString) body
 
-countryFromDefaultFile :: Day -> IO (Maybe (Day, Country))
-countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
+combinedHistoryFromDefaultFile :: IO History
+combinedHistoryFromDefaultFile = combinedHistoryFromFile historyIncidenceFile
 
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
 
+-- could be read from files, but that causes all kinds of problems with read / write synchronisation and lazy IO. Let's call it a constant
 firstDateOfPandemic :: Day
 firstDateOfPandemic = fromGregorian 2020 01 08
 
--- utility function for front end
-dataInFrontendFormat :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
-dataInFrontendFormat day = do
-  countryTupMay <- countryFromDefaultFile day
+-- utility functions for front end:
+
+-- can be called right away
+dataInFrontendFormatPreloaded :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
+dataInFrontendFormatPreloaded = dataInFrontendFormat (historyFromFile historyIncidencePreloadFile)
+
+-- only call after fetchAndSaveData is actually executed
+dataInFrontendFormatUpdates :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
+dataInFrontendFormatUpdates = dataInFrontendFormat combinedHistoryFromDefaultFile
+
+dataInFrontendFormat :: IO History -> Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
+dataInFrontendFormat hist day = do
+  countryTupMay <- flip fromHistory day <$> hist
   let countryMay = countryTupMay ^? _Just . _2
   case countryMay of
     Nothing -> return Nothing
