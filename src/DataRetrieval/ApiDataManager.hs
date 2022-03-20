@@ -96,7 +96,7 @@ updateHistoryIncidenceFile = do
             )
         )
       let lastUpdate = determineLastUpdate [contentsPreload, contents, contentsUpdate]
-      case trace ("Last updated: " ++ show lastUpdate ++ " fetching new data ...") lastUpdate of
+      case trace ("Last updated: " ++ show lastUpdate ++ "; fetching new data ...") lastUpdate of
         Nothing -> doUpdate agss dayZero -- fetch data from the beginning
         Just lastUpdate -> do
           now <- utctDay <$> getCurrentTime
@@ -120,6 +120,7 @@ parseDateFromLine line = parseTimeM True defaultTimeLocale timeFormat $ takeWhil
 
 doUpdatePartial :: Day -> IO ()
 doUpdatePartial lastUpdate = do
+  print "Small update (takes only seconds)"
   histUpdates <- parseHistoryUpdate . getResponseBody <$> httpLBS apiHistoryIncidenceRequest
   let updateRows = processHistoryUpdates <$> histUpdates
   case updateRows of
@@ -131,10 +132,9 @@ doUpdate agss lastUpdate = do
   --let agss = ["10042", "10043"] -- used for testing to have fewer api requests
   now <- utctDay <$> getCurrentTime
   let days = diffDays now lastUpdate
-  print $ "fetching history data for the last " ++ show days ++ " days"
+  print $ "Large update (will take some minutes)\nFetching history data for the last " ++ show days ++ " days"
 
   histories <- sequence <$> mapM (fetchAndParse (fromInteger days)) agss
-  --  mapM_ (mapM_ (print . date . head))  histories
   let firstDates = sequence $ mapM (map (utctDay . date . head)) histories
       firstDate = fromJust $ minimum <$> firstDates
       lastDates = sequence $ mapM (map (utctDay . date . last)) histories
