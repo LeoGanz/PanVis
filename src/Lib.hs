@@ -22,7 +22,6 @@ import DataStructure
 import History
 import HistoryQuote
 import Util
-import qualified Data.ByteString.Char8 as BC
 
 appendHistoryWithRawBodyData :: History -> String -> History
 appendHistoryWithRawBodyData x s = [history|$hist:x $s|]
@@ -59,9 +58,9 @@ dataInFrontendFormat day = do
     Nothing -> return Nothing
     Just country -> do
       let districtsList = country ^. states ^.. traverse ^. traverse . districts ^.. traverse
-          nameList = over mapped textToBS $ districtsList ^.. traverse . districtName
+          agsList = over mapped textToBS $ districtsList ^.. traverse . districtKey
           incidenceList = districtsList ^.. traverse . weekIncidence
-          resultList = zip nameList incidenceList
+          resultList = zip agsList incidenceList
       return $ Just (formatGermanDate day, resultList)
 
 -- for testing:
