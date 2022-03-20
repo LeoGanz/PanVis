@@ -12,36 +12,38 @@ import qualified Data.ByteString.Char8 as C
 import System.IO
 import System.Directory
 import Data.Functor ( (<&>) )
+import Data.Time.Calendar
 
 import GUIData
 import GenerateSVG
+import qualified Lib
 
-type Date = String
 
-data Env = Env  {
+data Env = Env  { 
                       mainMenu      :: MainMenu
+                    , dayToLoad     :: MVar (Maybe Day)
                     , animThread    :: MVar ThreadId
                     , animFrameId   :: MVar Int
-                    , frames        :: MVar (Vec.Vector (Date, Pixbuf))
+                    , frames        :: MVar (Vec.Vector (String, Pixbuf))
                     , paused        :: MVar Bool
                 }
+
 
 main :: IO()
 main = do
     initGUI
     mainMenu <- loadMainMenu
-    rangeSetRange (time_scale mainMenu) (0::Double) (999::Double)
     widgetShowAll $ main_window mainMenu
 
-    -- global variables
+    dayToLoad   <- newMVar =<< Lib.firstDayOfPandemic
     animThread  <- newEmptyMVar
     animFrameId <- newMVar 0
     frames      <- newMVar Vec.empty
     paused      <- newMVar True
+    let env = Env mainMenu dayToLoad animThread animFrameId frames paused
 
-    let env = Env mainMenu animThread animFrameId frames paused
-
-    void $ forkIO $ evalStateT (loadFrames 0) env
+    forkIO $ Lib.fetchAndSaveData >> evalStateT loadFrames env
+    forkIO $ evalStateT loadFrames env
 
     on (play_button mainMenu) buttonActivated $ evalStateT startStopAnimation env
     on (time_scale mainMenu)  adjustBounds    $ \pos -> evalStateT (selectFrame pos) env
@@ -58,20 +60,18 @@ swapMVarE var val   = get >>= liftIO . (\env -> swapMVar (var env) val)
 modifyMVarE var f   = do {val <- takeMVarE var; putMVarE var (f val)}
 
 
-getDistrictDataAdapter :: Int -> Maybe (Date, [(C.ByteString, Int)])
-getDistrictDataAdapter daysSinceOutbreak = -- TODO
-    if daysSinceOutbreak < 100 then
-        if even daysSinceOutbreak then
-            Just ("Datum", exampleList)
-        else
-            Just ("Datum2", map (\(d, x) -> (d, (1000::Int) - x)) exampleList)
-    else Nothing
+loadFrames :: StateT Env IO ()
+loadFrames = do
+    Just day <- readMVarE dayToLoad
+    result <- liftIO $ Lib.dataInFrontendFormat day
+    forM_ result $ \valsForOneDay -> do
+        loadSVG valsForOneDay
+        let dayPlusOne = addDays 1 day
+        swapMVarE dayToLoad (Just dayPlusOne)
+        loadFrames
 
 
-loadFrames :: Int -> StateT Env IO ()
-loadFrames day = forM_ (getDistrictDataAdapter day) (\x -> loadSVG x >> loadFrames (day + 1))
-
-loadSVG :: (Date, [(C.ByteString, Int)]) -> StateT Env IO ()
+loadSVG :: (String, [(C.ByteString, Double)]) -> StateT Env IO ()
 loadSVG (date, districtValList) = do
     (filePath, handle) <- liftIO $ openTempFile "app/images" date
     liftIO $ hClose handle
@@ -131,7 +131,7 @@ selectFrame pos = do
         display id date pixbuf
 
 
-display :: Int -> Date -> Pixbuf -> StateT Env IO ()
+display :: Int -> String -> Pixbuf -> StateT Env IO ()
 display sliderPos date pixbuf = do
     menu <- getMenu
     liftIO $ postGUIAsync $ do

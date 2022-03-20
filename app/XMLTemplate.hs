@@ -13,8 +13,8 @@ import Data.List
 import Data.Text (pack)
 import Data.Text.Encoding
 
--- TODO: fit legend values to colorGradient
-generateXMLCode :: [(C.ByteString, Int)] -> [(Int, String)] -> [Text.XML.Node]
+
+generateXMLCode :: [(C.ByteString, Double)] -> [(Double, String)] -> [Text.XML.Node]
 generateXMLCode districtValList colorGradient = [xml|
 
     <defs>
@@ -35,12 +35,12 @@ generateXMLCode districtValList colorGradient = [xml|
         <path d="m402,990v6h2v-4h47.7v4h2v-4h47.6v4h2v-4H551v4h2v-4h47.6v4h2v-4h47.7v4h2v-4H700v4h2v-6z" style="fill:#000000;stroke-width:0">
 
         <text x="390" y="1010">    >0
-        <text x="435.2" y="1010">  4000
-        <text x="485" y="1010">    6000
-        <text x="531" y="1010">    10000
-        <text x="581" y="1010">    15000
-        <text x="629" y="1010">    22000
-        <text x="678.5" y="1010">  ≥30000
+        <text x="435.2" y="1010">  25
+        <text x="485" y="1010">    50
+        <text x="531" y="1010">    100
+        <text x="581" y="1010">    250
+        <text x="629" y="1010">    500
+        <text x="678.5" y="1010">  ≥2000
     
     $forall (district, n) <- districtValList
         <path fill="#{pack $ getColor n}" d="#{decodeUtf8 $ getPath district }">
@@ -51,33 +51,33 @@ colorOffsetList :: [(String, Double)]
 colorOffsetList = zipWith (\(_,a) b -> (a,b)) colorGradient [0, 0.166, 0.333, 0.5, 0.666, 0.833, 1.0]
 
 
-getColor :: Int -> String
+getColor :: Double -> String
 getColor n
-  | smallerOrEqual == []    = snd $ head bigger
-  | bigger == []            = snd $ last smallerOrEqual
-  | otherwise               = sRGB24show $  blend percentage (sRGB24read c1) (sRGB24read c2)
+  | null smallerOrEqual = snd $ head bigger
+  | null bigger         = snd $ last smallerOrEqual
+  | otherwise           = sRGB24show $  blend percentage (sRGB24read c1) (sRGB24read c2)
   where
       (smallerOrEqual, bigger) = partition ((<= n) . fst) colorGradient
       (n1, c1) = last smallerOrEqual
       (n2, c2) = head bigger
       percentage
-        = fromIntegral (n - n1) / fromIntegral (n2 - n1) :: Double
+        = (n - n1) / (n2 - n1)
 
 
 getPath :: C.ByteString -> C.ByteString
 getPath district = case districtPathHM HM.!? district of
     Just val -> val
-    Nothing  -> C.pack . error $ "Could not find district \"" ++ (C.unpack district) ++ "\"."
+    Nothing  -> C.pack . error $ "Could not find district \"" ++ C.unpack district ++ "\"."
 
--- TODO: set proper values
-colorGradient :: [(Int, String)]
+
+colorGradient :: [(Double, String)]
 colorGradient = [(0,    "fff9f3")
                 ,(25,   "feebe2")
                 ,(50,   "fa9fb5")
                 ,(100,  "dd3497")
-                ,(200,  "ae017e")
+                ,(250,  "ae017e")
                 ,(500,  "7a0177")
-                ,(1000, "000000")]
+                ,(2000, "000000")]
 
 
 districtPathHM :: HM.HashMap C.ByteString C.ByteString

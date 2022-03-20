@@ -9,12 +9,13 @@ module Lib
     countryFromDefaultFile,
     testQQ,
     testExtQQ,
-    firstDateOfPandemic,
+    firstDayOfPandemic,
     dataInFrontendFormat
   )
 where
 
-import Data.Time.Calendar (Day)
+import Data.Time.Calendar
+import Data.Maybe
 import DataRetrieval.ApiDataManager
 import DataStructure
 import History
@@ -45,8 +46,8 @@ countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
 
-firstDateOfPandemic :: Day
-firstDateOfPandemic = undefined
+firstDayOfPandemic :: IO (Maybe Day)
+firstDayOfPandemic = return . Just $ fromGregorian 2020 1 8
 
 dataInFrontendFormat :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
 dataInFrontendFormat = undefined
