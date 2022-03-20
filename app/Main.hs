@@ -13,15 +13,15 @@ import System.IO
 import System.Directory
 import Data.Functor ( (<&>) )
 import Data.Time.Calendar
+import Data.Maybe
 
 import GUIData
 import GenerateSVG
 import qualified Lib
 
 
-data Env = Env  { 
+data Env = Env  {
                       mainMenu      :: MainMenu
-                    , dayToLoad     :: MVar (Maybe Day)
                     , animThread    :: MVar ThreadId
                     , animFrameId   :: MVar Int
                     , frames        :: MVar (Vec.Vector (String, Pixbuf))
@@ -35,15 +35,27 @@ main = do
     mainMenu <- loadMainMenu
     widgetShowAll $ main_window mainMenu
 
-    dayToLoad   <- newMVar =<< Lib.firstDayOfPandemic
     animThread  <- newEmptyMVar
     animFrameId <- newMVar 0
     frames      <- newMVar Vec.empty
     paused      <- newMVar True
-    let env = Env mainMenu dayToLoad animThread animFrameId frames paused
+    let env = Env mainMenu animThread animFrameId frames paused
 
-    forkIO $ Lib.fetchAndSaveData >> evalStateT loadFrames env
-    forkIO $ evalStateT loadFrames env
+    dayToLoad <- newMVar =<< Lib.firstDateOfPandemic
+    loading <- newEmptyMVar
+    forkIO $ do
+        Lib.fetchAndSaveData
+        putMVar loading True
+        day <- readMVar dayToLoad
+        when (isNothing day) $ void $ swapMVar dayToLoad =<< Lib.firstDateOfPandemic
+        day <- readMVar dayToLoad
+        evalStateT (loadFrames day) env
+        void $ takeMVar loading
+    forkIO $ do
+        putMVar loading True
+        day <- readMVar dayToLoad
+        evalStateT (loadFrames day) env
+        void $ takeMVar loading
 
     on (play_button mainMenu) buttonActivated $ evalStateT startStopAnimation env
     on (time_scale mainMenu)  adjustBounds    $ \pos -> evalStateT (selectFrame pos) env
@@ -60,15 +72,13 @@ swapMVarE var val   = get >>= liftIO . (\env -> swapMVar (var env) val)
 modifyMVarE var f   = do {val <- takeMVarE var; putMVarE var (f val)}
 
 
-loadFrames :: StateT Env IO ()
-loadFrames = do
-    Just day <- readMVarE dayToLoad
-    result <- liftIO $ Lib.dataInFrontendFormat day
-    forM_ result $ \valsForOneDay -> do
-        loadSVG valsForOneDay
-        let dayPlusOne = addDays 1 day
-        swapMVarE dayToLoad (Just dayPlusOne)
-        loadFrames
+loadFrames :: Maybe Day -> StateT Env IO ()
+loadFrames maybeDay = do
+    forM_ maybeDay $ \day -> do
+        result <- liftIO $ Lib.dataInFrontendFormat day
+        forM_ result $ \valsForOneDay -> do
+            loadSVG valsForOneDay
+            loadFrames $ Just (addDays 1 day)
 
 
 loadSVG :: (String, [(C.ByteString, Double)]) -> StateT Env IO ()
