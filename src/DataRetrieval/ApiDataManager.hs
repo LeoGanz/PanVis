@@ -17,6 +17,7 @@ import Data.Maybe (fromJust)
 import Data.Text (pack)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified Data.Text.IO.Utf8 as Utf8
 import Data.Time
 import DataRetrieval.ApiAccess
 import DataRetrieval.ApiDistrict (ApiDistrict, ApiDistrictKey, ags, name, parseDistrictList, population, stateAbbreviation)
@@ -61,7 +62,7 @@ updateHistoryIncidenceFile = do
       contentsUpdate <- readFile (historyIncidenceFile ++ updateFileSuffix)
       when
         (null (lines contents))
-        ( TIO.writeFile
+        ( Utf8.writeFile -- with TIO: problems with utf8 encoding of Umlaute in district names
             historyIncidenceFile
             ( -- header line
               T.concat
