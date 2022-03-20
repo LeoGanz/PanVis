@@ -4,6 +4,8 @@ module DataRetrieval.ApiDataManager
   ( getDistrictsList,
     historyIncidenceFile,
     updateHistoryIncidenceFile,
+    historyIncidenceUpdateFile,
+    historyIncidencePreloadFile,
     saveQueryResultLazy,
     updateFileSuffix,
     preloadFileSuffix,

@@ -16,7 +16,7 @@ where
 
 import Control.Lens
 import qualified Data.ByteString.Char8 as BC
-import Data.Time.Calendar (Day)
+import Data.Time.Calendar (Day, fromGregorian)
 import DataRetrieval.ApiDataManager
 import DataStructure
 import History
@@ -53,8 +53,8 @@ countryFromDefaultFile day = flip fromHistory day <$> historyFromDefaultFile
 fetchAndSaveData :: IO ()
 fetchAndSaveData = updateHistoryIncidenceFile
 
-firstDateOfPandemic :: IO (Maybe Day)
-firstDateOfPandemic = readFileMay historyIncidenceFile >>= \content -> return $ (parseDateFromLine . head . dropHeader . lines) =<< content
+firstDateOfPandemic :: Day
+firstDateOfPandemic = fromGregorian 2020 01 08
 
 -- utility function for front end
 dataInFrontendFormat :: Day -> IO (Maybe (String, [(BC.ByteString, Double)]))
