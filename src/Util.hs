@@ -22,6 +22,9 @@ intToText = T.pack . show
 bsToL :: BC.ByteString -> L.ByteString
 bsToL = L.fromChunks . return
 
+lToBs :: L.ByteString -> BC.ByteString
+lToBs = BC.concat . L.toChunks 
+
 (<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<<$>>) = fmap . fmap
 
