@@ -166,6 +166,7 @@ preprocess firstReport lastReport fragments = worker fragments $ take (fromInteg
       | otherwise = worker frags dates -- duplicate element, drop one
 
 writeDataPerDay :: FilePath -> Day -> [HistoryFragment] -> IO ()
+writeDataPerDay _ _ [] = return ()
 writeDataPerDay file lastUpdate fragments = do
   let theDay = date $ head fragments
       theDayText = pack $ formatTime defaultTimeLocale timeFormat theDay
