@@ -56,5 +56,5 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-#    dependencies:
-#    - panvis
+    dependencies:
+    - panvis

@@ -9,7 +9,6 @@ import Control.Concurrent.Lifted (fork, threadDelay, killThread, ThreadId)
 import Control.Monad.Trans.State.Lazy
 import qualified Data.Vector as Vec
 import qualified Data.ByteString.Char8 as C
-import System.IO
 import System.Directory
 import Data.Functor ( (<&>) )
 import Data.Time.Calendar
@@ -83,11 +82,11 @@ loadFrames maybeDay = do
 
 loadSVG :: (String, [(C.ByteString, Double)]) -> StateT Env IO ()
 loadSVG (date, districtValList) = do
-    (filePath, handle) <- liftIO $ openTempFile "app/images" date
-    liftIO $ hClose handle
-    liftIO $ writeSVGFile districtValList filePath
+    let filePath = "app/images/buffer/" ++ date ++ ".svg"
+    fileExists <- liftIO $ doesFileExist filePath
+    unless fileExists $
+        liftIO $ writeSVGFile districtValList filePath
     pixbuf <- liftIO $ pixbufNewFromFile filePath
-    liftIO $ removeFile filePath
     void $ modifyMVarE frames (\v -> Vec.snoc v (date, pixbuf))
     v <- readMVarE frames
     menu <- getMenu
@@ -116,14 +115,14 @@ doAnimation = do
             putMVarE animFrameId (id + 1)
             let (date, pixbuf) = v Vec.! id
             display id date pixbuf
-            threadDelay 10000
+            threadDelay 100000
             doAnimation
         else do
             putMVarE animFrameId 0
             t <- takeMVarE animThread
             putMVarE paused True
             killThread t
-    else do
+    else
         putMVarE paused True
 
 
